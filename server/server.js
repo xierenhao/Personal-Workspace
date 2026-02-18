@@ -26,7 +26,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 const upload = multer({ dest: 'temp/' });
 
 const TEMP_DIR = path.join(__dirname, 'temp');
-const TEMPLATE_DIR = path.join(__dirname, '..', 'Chinese_Resume_Template_中文简历模板___1_');
+const TEMPLATE_DIR = path.join(__dirname, 'Chinese_Resume_Template_中文简历模板___1_');
 
 if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR, { recursive: true });

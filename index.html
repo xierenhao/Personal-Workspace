@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人工作台 | My Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'workspace': {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        'brand': '#6366f1', // Indigo
+                        'accent': '#f43f5e', // Rose for games
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+        }
+        .nav-item.active { background-color: #334155; color: white; }
+        .nav-item:hover:not(.active) { background-color: #1e293b; }
+        
+        /* 游戏相关样式 */
+        .game-container { display: none; }
+        .game-container.active { display: flex; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        
+        .hole { width: 60px; height: 60px; background: #8B4513; border-radius: 50%; position: relative; overflow: hidden; box-shadow: inset 0 8px 16px rgba(0,0,0,0.5); cursor: pointer; }
+        .mole { width: 45px; height: 45px; border-radius: 50%; position: absolute; bottom: -45px; left: 7.5px; transition: bottom 0.2s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .mole.up { bottom: 7.5px; }
+        .mole.red { background: #ef4444; border: 2px solid #b91c1c; }
+        .mole.blue { background: #3b82f6; border: 2px solid #1d4ed8; }
+        
+        .memory-card { perspective: 1000px; cursor: pointer; }
+        .memory-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
+        .memory-card.flipped .memory-card-inner { transform: rotateY(180deg); }
+        .memory-front, .memory-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); user-select: none; }
+        .memory-front { background-color: #6366f1; color: white; }
+        .memory-back { background-color: white; color: #6366f1; transform: rotateY(180deg); border: 1px solid #e0e7ff; }
+
+        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); border-radius: 0.75rem; }
+        .modal-content { background: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); max-width: 280px; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- 侧边栏 -->
+    <aside class="w-64 bg-workspace-900 text-gray-300 flex flex-col h-full flex-shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-gray-700/50">
+            <i class="fa-solid fa-cube text-brand text-xl mr-3"></i>
+            <span class="font-bold text-lg text-white">My Workspace</span>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2">
+            <div onclick="switchView('dashboard')" class="nav-item flex items-center px-4 py-3 rounded-lg cursor-pointer transition-colors active" data-view="dashboard">
+                <i class="fa-solid fa-house w-5 mr-3"></i>
+                <span>仪表盘</span>
+            </div>
+            <div onclick="switchView('games')" class="nav-item flex items-center px-4 py-3 rounded-lg cursor-pointer transition-colors" data-view="games">
+                <i class="fa-solid fa-gamepad w-5 mr-3"></i>
+                <span>摸鱼小游戏</span>
+            </div>
+            <div onclick="switchView('resume')" class="nav-item flex items-center px-4 py-3 rounded-lg cursor-pointer transition-colors" data-view="resume">
+                <i class="fa-solid fa-file-lines w-5 mr-3"></i>
+                <span>简历 Update</span>
+            </div>
+            <div onclick="switchView('news')" class="nav-item flex items-center px-4 py-3 rounded-lg cursor-pointer transition-colors" data-view="news">
+                <i class="fa-solid fa-futbol w-5 mr-3"></i>
+                <span>体育热点</span>
+            </div>
+        </nav>
+        <!-- 用户信息 -->
+        <div class="p-4 border-t border-gray-700/50">
+            <div class="flex items-center">
+                <div class="w-9 h-9 rounded-full bg-brand flex items-center justify-center text-white font-bold text-sm">U</div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-white">User</p>
+                    <p class="text-xs text-gray-500">Pro Account</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区域 -->
+    <main class="flex-1 h-full overflow-y-auto relative">
+        
+        <!-- 1. 仪表盘视图 -->
+        <div id="view-dashboard" class="view-section p-8 h-full">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">欢迎回来</h1>
+                <p class="text-gray-500 mt-1">今天是 <span id="currentDate"></span>，祝你工作顺利。</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- 快捷卡片 -->
+                <div class="glass-panel rounded-xl p-6 hover:shadow-lg transition cursor-pointer" onclick="switchView('games')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">摸鱼一下</p>
+                            <p class="text-2xl font-bold text-gray-800 mt-2">放松时刻</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4">点击开始小游戏</p>
+                </div>
+                
+                <div class="glass-panel rounded-xl p-6 hover:shadow-lg transition cursor-pointer" onclick="switchView('resume')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">简历状态</p>
+                            <p class="text-2xl font-bold text-gray-800 mt-2">已更新</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4">最后更新: 2023-10-27</p>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 hover:shadow-lg transition cursor-pointer" onclick="switchView('news')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">今日资讯</p>
+                            <p class="text-2xl font-bold text-gray-800 mt-2">NBA 热点</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+                            <i class="fa-solid fa-fire"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4">查看最新篮球新闻</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 摸鱼小游戏视图 -->
+        <div id="view-games" class="view-section hidden h-full flex flex-col">
+            <!-- 游戏大厅 -->
+            <div id="gameLobby" class="p-8 h-full overflow-y-auto">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">摸鱼小游戏</h2>
+                    <p class="text-gray-500 text-sm">选择一个游戏，给大脑充个电</p>
+                </div>
+                <div class="grid grid-cols-2 gap-6 max-w-3xl">
+                    <!-- 贪吃蛇 -->
+                    <div class="glass-panel rounded-xl p-5 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group" onclick="launchGame('snake')">
+                        <div class="h-32 bg-gray-900 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative border border-gray-700">
+                            <canvas id="thumb-snake" width="120" height="120"></canvas>
+                        </div>
+                        <h3 class="font-bold text-gray-800">贪吃蛇</h3>
+                        <p class="text-xs text-gray-500">经典 · 休闲</p>
+                    </div>
+                    <!-- 2048 -->
+                    <div class="glass-panel rounded-xl p-5 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group" onclick="launchGame('2048')">
+                        <div class="h-32 bg-orange-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative border border-orange-100">
+                            <canvas id="thumb-2048" width="120" height="120"></canvas>
+                        </div>
+                        <h3 class="font-bold text-gray-800">2048</h3>
+                        <p class="text-xs text-gray-500">益智 · 合并</p>
+                    </div>
+                    <!-- 打地鼠 -->
+                    <div class="glass-panel rounded-xl p-5 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group" onclick="launchGame('whack')">
+                        <div class="h-32 bg-amber-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative border border-amber-100">
+                            <div class="hole scale-75"><div class="mole red up"></div></div>
+                        </div>
+                        <h3 class="font-bold text-gray-800">打地鼠</h3>
+                        <p class="text-xs text-gray-500">反应 · 动作</p>
+                    </div>
+                    <!-- 记忆翻牌 -->
+                    <div class="glass-panel rounded-xl p-5 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group" onclick="launchGame('memory')">
+                        <div class="h-32 bg-blue-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative border border-blue-100">
+                            <div class="grid grid-cols-2 gap-1"><div class="w-8 h-8 bg-brand rounded shadow flex items-center justify-center text-white text-lg">⭐️</div><div class="w-8 h-8 bg-gray-200 rounded shadow flex items-center justify-center text-gray-400 text-lg">❓</div><div class="w-8 h-8 bg-gray-200 rounded shadow flex items-center justify-center text-gray-400 text-lg">❓</div><div class="w-8 h-8 bg-brand rounded shadow flex items-center justify-center text-white text-lg">⭐️</div></div>
+                        </div>
+                        <h3 class="font-bold text-gray-800">记忆翻牌</h3>
+                        <p class="text-xs text-gray-500">脑力 · 匹配</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 游戏运行容器 -->
+            <div id="gameContainer" class="game-container flex-1 relative bg-workspace-100 flex items-center justify-center">
+                <button onclick="exitGame()" class="absolute top-4 left-4 flex items-center gap-2 text-gray-600 hover:text-brand font-medium text-sm bg-white px-3 py-1.5 rounded-full shadow hover:shadow-md transition z-50">
+                    <i class="fa-solid fa-arrow-left"></i> 返回大厅
+                </button>
+                <div id="gameStage" class="w-full h-full flex flex-col items-center justify-center p-4"></div>
+            </div>
+        </div>
+
+        <!-- 3. 简历 Update 视图 -->
+        <div id="view-resume" class="view-section hidden h-full flex flex-col">
+            <div class="p-6 border-b border-gray-200 bg-white/50 flex-shrink-0">
+                <div class="flex justify-between items-center max-w-6xl mx-auto">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">简历生成器</h2>
+                        <p class="text-gray-500 text-sm">创建、编辑并导出专业简历 PDF</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="showModuleConfig()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2">
+                            <i class="fa-solid fa-sliders"></i>模块配置
+                        </button>
+                        <button onclick="showHistoryPanel()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left"></i>历史简历
+                        </button>
+                        <button onclick="createNewResume()" class="bg-brand text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 transition shadow-md flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>新建简历
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 flex overflow-hidden">
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div id="resumeEditor" class="max-w-4xl mx-auto space-y-6">
+                        <div class="glass-panel rounded-xl p-6" id="basicInfoPanel">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-user text-brand"></i>基本信息
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">姓名</label>
+                                    <input type="text" id="resumeName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition" placeholder="请输入姓名">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">手机号码</label>
+                                    <input type="text" id="resumePhone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition" placeholder="请输入手机号">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">邮箱</label>
+                                    <input type="email" id="resumeEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition" placeholder="请输入邮箱">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">所在地</label>
+                                    <input type="text" id="resumeLocation" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition" placeholder="如：北京/上海">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">性别</label>
+                                    <select id="resumeGender" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition">
+                                        <option value="">请选择</option>
+                                        <option value="男">男</option>
+                                        <option value="女">女</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">头像上传</label>
+                                    <div class="flex items-center gap-3">
+                                        <div id="avatarPreview" class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 cursor-pointer hover:border-brand transition" onclick="document.getElementById('avatarInput').click()">
+                                            <i class="fa-solid fa-camera text-gray-400" id="avatarIcon"></i>
+                                            <img id="avatarImg" class="w-full h-full object-cover hidden">
+                                        </div>
+                                        <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
+                                        <span class="text-xs text-gray-500">点击上传头像</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="educationPanel">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-graduation-cap text-brand"></i>教育背景
+                                </h3>
+                                <button onclick="addEducation()" class="text-brand text-sm hover:underline flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i>添加
+                                </button>
+                            </div>
+                            <div id="educationList" class="space-y-4"></div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="experiencePanel">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-briefcase text-brand"></i>实习/工作经历
+                                </h3>
+                                <button onclick="addExperience()" class="text-brand text-sm hover:underline flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i>添加
+                                </button>
+                            </div>
+                            <div id="experienceList" class="space-y-4"></div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="projectPanel">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-rocket text-brand"></i>项目经历
+                                </h3>
+                                <button onclick="addProject()" class="text-brand text-sm hover:underline flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i>添加
+                                </button>
+                            </div>
+                            <div id="projectList" class="space-y-4"></div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="researchPanel">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-flask text-brand"></i>科研经历
+                                </h3>
+                                <button onclick="addResearch()" class="text-brand text-sm hover:underline flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i>添加
+                                </button>
+                            </div>
+                            <div id="researchList" class="space-y-4"></div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="awardPanel">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-trophy text-brand"></i>获奖经历
+                                </h3>
+                                <button onclick="addAward()" class="text-brand text-sm hover:underline flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i>添加
+                                </button>
+                            </div>
+                            <div id="awardList" class="space-y-4"></div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6" id="selfEvaluationPanel">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-star text-brand"></i>自我评价
+                            </h3>
+                            <textarea id="selfEvaluation" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition" placeholder="请输入自我评价内容"></textarea>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-file-code text-brand"></i>LaTeX 预览
+                            </h3>
+                            <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                                <pre id="latexPreview" class="text-green-400 text-xs font-mono whitespace-pre-wrap"></pre>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-brand"></i>页面设置
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">字体大小</label>
+                                    <select id="fontSize" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand" onchange="updateLatexPreview()">
+                                        <option value="8">8pt (极小)</option>
+                                        <option value="9">9pt (很小)</option>
+                                        <option value="10">10pt (小)</option>
+                                        <option value="10.5" selected>10.5pt (默认)</option>
+                                        <option value="11">11pt (中)</option>
+                                        <option value="11.5">11.5pt (中偏大)</option>
+                                        <option value="12">12pt (大)</option>
+                                        <option value="12.5">12.5pt (较大)</option>
+                                        <option value="13">13pt (很大)</option>
+                                        <option value="14">14pt (极大)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">行间距</label>
+                                    <select id="lineSpacing" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand" onchange="updateLatexPreview()">
+                                        <option value="0.6">0.6 (极紧凑)</option>
+                                        <option value="0.7">0.7 (很紧凑)</option>
+                                        <option value="0.8">0.8 (紧凑)</option>
+                                        <option value="0.9">0.9 (较紧凑)</option>
+                                        <option value="1" selected>1.0 (默认)</option>
+                                        <option value="1.1">1.1 (较宽松)</option>
+                                        <option value="1.2">1.2 (宽松)</option>
+                                        <option value="1.3">1.3 (很宽松)</option>
+                                        <option value="1.4">1.4 (极宽松)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">上边距</label>
+                                    <select id="marginTop" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand" onchange="updateLatexPreview()">
+                                        <option value="0.5">0.5cm (极窄)</option>
+                                        <option value="0.6">0.6cm (很窄)</option>
+                                        <option value="0.7">0.7cm (窄)</option>
+                                        <option value="0.8">0.8cm (较窄)</option>
+                                        <option value="0.9" selected>0.9cm (默认)</option>
+                                        <option value="1">1.0cm (标准)</option>
+                                        <option value="1.1">1.1cm (较宽)</option>
+                                        <option value="1.2">1.2cm (宽)</option>
+                                        <option value="1.3">1.3cm (很宽)</option>
+                                        <option value="1.5">1.5cm (极宽)</option>
+                                        <option value="1.8">1.8cm (超宽)</option>
+                                        <option value="2">2.0cm (最大)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">下边距</label>
+                                    <select id="marginBottom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand" onchange="updateLatexPreview()">
+                                        <option value="0.5">0.5cm (极窄)</option>
+                                        <option value="0.6">0.6cm (很窄)</option>
+                                        <option value="0.7">0.7cm (窄)</option>
+                                        <option value="0.8">0.8cm (较窄)</option>
+                                        <option value="0.9" selected>0.9cm (默认)</option>
+                                        <option value="1">1.0cm (标准)</option>
+                                        <option value="1.1">1.1cm (较宽)</option>
+                                        <option value="1.2">1.2cm (宽)</option>
+                                        <option value="1.3">1.3cm (很宽)</option>
+                                        <option value="1.5">1.5cm (极宽)</option>
+                                        <option value="1.8">1.8cm (超宽)</option>
+                                        <option value="2">2.0cm (最大)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center gap-3">
+                                <button onclick="autoAdjustLayout()" class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition flex items-center gap-2">
+                                    <i class="fa-solid fa-magic"></i>自动调整
+                                </button>
+                                <span class="text-xs text-gray-500">根据内容自动调整字体和间距，使内容正好一页</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center gap-4 pb-6">
+                            <button onclick="promptSaveResume()" class="px-6 py-2.5 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2">
+                                <i class="fa-solid fa-save"></i>保存草稿
+                            </button>
+                            <button onclick="promptGeneratePDF()" class="bg-green-500 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-green-600 transition shadow-md flex items-center gap-2">
+                                <i class="fa-solid fa-file-pdf"></i>生成 PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="historyPanel" class="w-80 border-l border-gray-200 bg-white/30 overflow-y-auto hidden flex-shrink-0">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800">历史简历</h3>
+                        <button onclick="hideHistoryPanel()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="historyList" class="p-4 space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 体育热点视图 -->
+        <div id="view-news" class="view-section hidden h-full flex flex-col">
+            <div class="p-6 border-b border-gray-200 bg-white/50 flex-shrink-0">
+                <div class="flex justify-between items-center max-w-6xl mx-auto">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">体育热点</h2>
+                        <p class="text-gray-500 text-sm">实时追踪全球体育赛事资讯</p>
+                    </div>
+                    <button onclick="refreshNews()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate"></i>刷新
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex gap-2 mb-4 flex-wrap">
+                        <button onclick="switchNewsCategory('all')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-brand text-white" data-category="all">全部</button>
+                        <button onclick="switchNewsCategory('nba')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="nba">🏀 NBA</button>
+                        <button onclick="switchNewsCategory('cba')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="cba">🏀 CBA</button>
+                        <button onclick="switchNewsCategory('epl')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="epl">⚽ 英超</button>
+                        <button onclick="switchNewsCategory('csl')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="csl">⚽ 中超</button>
+                        <button onclick="switchNewsCategory('worldcup')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="worldcup">🏆 世界杯</button>
+                        <button onclick="switchNewsCategory('tennis')" class="news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="tennis">🎾 网球</button>
+                    </div>
+
+                    <div id="liveScoresSection" class="mb-6 hidden">
+                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            实时比分
+                        </h3>
+                        <div id="liveScoresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        </div>
+                    </div>
+
+                    <div id="standingsSection" class="mb-6 hidden">
+                        <h3 class="text-lg font-bold text-gray-800 mb-3">积分榜</h3>
+                        <div id="standingsContainer" class="glass-panel rounded-xl p-4 overflow-x-auto">
+                        </div>
+                    </div>
+
+                    <div id="newsLoading" class="hidden text-center py-12">
+                        <i class="fa-solid fa-spinner fa-spin text-4xl text-brand"></i>
+                        <p class="text-gray-500 mt-4">加载中...</p>
+                    </div>
+
+                    <div id="newsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    </div>
+
+                    <div id="newsError" class="hidden text-center py-12">
+                        <i class="fa-solid fa-exclamation-circle text-4xl text-red-400"></i>
+                        <p class="text-gray-500 mt-4">加载失败，请稍后重试</p>
+                        <button onclick="refreshNews()" class="mt-4 px-4 py-2 bg-brand text-white rounded-lg text-sm">重新加载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模块配置弹窗 -->
+        <div id="moduleConfigModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">简历模块配置</h3>
+                    <button onclick="hideModuleConfig()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1">
+                    <p class="text-sm text-gray-500 mb-4">选择要在简历中显示的模块，拖拽可调整顺序</p>
+                    <div id="moduleList" class="space-y-3">
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button onclick="hideModuleConfig()" class="px-4 py-2 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition">取消</button>
+                    <button onclick="saveModuleConfig()" class="bg-brand text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-600 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- 核心逻辑 ---
+        
+        // 1. 视图切换
+        function switchView(viewName) {
+            // 隐藏所有视图
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            // 显示目标视图
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            // 更新导航栏状态
+            document.querySelectorAll('.nav-item').forEach(el => {
+                if(el.dataset.view === viewName) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+
+            // 如果切换到非游戏视图，重置游戏状态
+            if (viewName !== 'games') {
+                exitGame();
+            }
+            
+            // 如果切换到新闻视图，初始化新闻
+            if (viewName === 'news') {
+                initNews();
+            }
+        }
+
+        // 2. 游戏逻辑
+        let activeGame = null;
+        const gameLobby = document.getElementById('gameLobby');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameStage = document.getElementById('gameStage');
+
+        function launchGame(gameId) {
+            gameLobby.classList.add('hidden');
+            gameContainer.classList.add('active');
+            gameStage.innerHTML = '';
+            
+            if (gameId === 'snake') activeGame = new SnakeGame(gameStage);
+            else if (gameId === '2048') activeGame = new Game2048(gameStage);
+            else if (gameId === 'whack') activeGame = new WhackAMoleGame(gameStage);
+            else if (gameId === 'memory') activeGame = new MemoryGame(gameStage);
+        }
+
+        function exitGame() {
+            if (activeGame && activeGame.destroy) activeGame.destroy();
+            activeGame = null;
+            gameStage.innerHTML = '';
+            gameContainer.classList.remove('active');
+            gameLobby.classList.remove('hidden');
+        }
+
+        // 初始化
+        window.onload = function() {
+            // 设置日期
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDate').innerText = new Date().toLocaleDateString('zh-CN', options);
+            
+            // 绘制缩略图
+            drawSnakeThumb();
+            draw2048Thumb();
+            
+            // 初始化简历编辑器
+            initResumeEditor();
+            
+            // 加载历史简历列表
+            loadHistoryList();
+            
+            // 如果是从历史简历加载，切换到简历视图
+            if (localStorage.getItem('loadResumeOnStart') === 'true') {
+                localStorage.removeItem('loadResumeOnStart');
+                switchView('resume');
+            }
+        };
+
+        function drawSnakeThumb() {
+            const c = document.getElementById('thumb-snake'); const ctx = c.getContext('2d');
+            ctx.fillStyle = '#111827'; ctx.fillRect(0,0,120,120);
+            ctx.fillStyle = '#10B981'; ctx.fillRect(40,40,15,15); ctx.fillRect(40,55,15,15); ctx.fillRect(40,70,15,15);
+            ctx.fillStyle = '#EF4444'; ctx.beginPath(); ctx.arc(75,55,8,0,Math.PI*2); ctx.fill();
+        }
+        function draw2048Thumb() {
+            const c = document.getElementById('thumb-2048'); const ctx = c.getContext('2d');
+            ctx.fillStyle = '#bbada0'; ctx.fillRect(0,0,120,120);
+            ctx.fillStyle = '#eee4da'; ctx.fillRect(10,10,45,45); ctx.fillStyle='#fff'; ctx.font='20px Arial'; ctx.fillText('2',25,40);
+            ctx.fillStyle = '#f2b179'; ctx.fillRect(65,10,45,45); ctx.fillStyle='#fff'; ctx.fillText('4',80,40);
+            ctx.fillStyle = '#f59563'; ctx.fillRect(10,65,45,45); ctx.fillStyle='#fff'; ctx.fillText('8',25,95);
+            ctx.fillStyle = '#f67c5f'; ctx.fillRect(65,65,45,45); ctx.fillStyle='#fff'; ctx.fillText('16',75,95);
+        }
+
+        // --- 游戏类定义 (压缩版以节省空间，逻辑同前) ---
+
+        class SnakeGame {
+            constructor(c) { this.c=c; this.w=400; this.h=400; this.gs=20; this.tc=20; this.ui=document.createElement('div'); this.ui.className='flex flex-col items-center gap-2 relative w-full'; this.ui.innerHTML=`<div class="flex justify-between w-full max-w-[400px] font-bold text-gray-700 text-sm"><span>吃食: <span id="sScore">0</span></span><button id="sRestart" class="text-brand hover:underline hidden">重置</button></div><div class="relative shadow-xl rounded-lg overflow-hidden border-2 border-gray-800 bg-gray-900"><canvas id="sCanvas" width="${this.w}" height="${this.h}" class="block"></canvas><div id="sModal" class="modal-overlay"><div class="modal-content"><h3 class="text-xl font-bold mb-1">贪吃蛇</h3><p class="text-gray-500 mb-3 text-xs">方向键控制</p><button id="sStart" class="px-4 py-1.5 bg-green-500 rounded-full font-bold text-white text-sm w-full">开始</button></div></div></div><div class="grid grid-cols-3 gap-1 w-36 md:hidden"><div></div><button class="ctrl p-2 bg-gray-200 rounded text-xs" data-d="up"><i class="fa-solid fa-arrow-up"></i></button><div></div><button class="ctrl p-2 bg-gray-200 rounded text-xs" data-d="left"><i class="fa-solid fa-arrow-left"></i></button><button class="ctrl p-2 bg-gray-200 rounded text-xs" data-d="down"><i class="fa-solid fa-arrow-down"></i></button><button class="ctrl p-2 bg-gray-200 rounded text-xs" data-d="right"><i class="fa-solid fa-arrow-right"></i></button></div>`; c.appendChild(this.ui); this.canvas=this.ui.querySelector('#sCanvas'); this.ctx=this.canvas.getContext('2d'); this.scoreEl=this.ui.querySelector('#sScore'); this.modal=this.ui.querySelector('#sModal'); this.reset(); this.ui.querySelector('#sStart').onclick=()=>this.start(); this.ui.querySelector('#sRestart').onclick=()=>this.start(); document.addEventListener('keydown',e=>this.handleKey(e)); this.ui.querySelectorAll('.ctrl').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();this.handleInput(b.dataset.d)})); }
+            reset() { this.snake=[{x:10,y:10},{x:10,y:11},{x:10,y:12}]; this.dx=0; this.dy=-1; this.score=0; this.placeFood(); this.draw(); }
+            start() { this.reset(); this.modal.classList.add('hidden'); this.ui.querySelector('#sRestart').classList.remove('hidden'); this.isRunning=true; if(this.iv)clearInterval(this.iv); this.iv=setInterval(()=>this.update(),100); }
+            destroy() { if(this.iv)clearInterval(this.iv); this.ui.remove(); }
+            handleKey(e) { if(!this.isRunning)return; if(e.key==='ArrowUp')this.handleInput('up'); if(e.key==='ArrowDown')this.handleInput('down'); if(e.key==='ArrowLeft')this.handleInput('left'); if(e.key==='ArrowRight')this.handleInput('right'); }
+            handleInput(d) { if(d==='up'&&this.dy!==1){this.dx=0;this.dy=-1;} if(d==='down'&&this.dy!==-1){this.dx=0;this.dy=1;} if(d==='left'&&this.dx!==1){this.dx=-1;this.dy=0;} if(d==='right'&&this.dx!==-1){this.dx=1;this.dy=0;} }
+            placeFood() { this.food={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)}; for(let p of this.snake)if(p.x===this.food.x&&p.y===this.food.y)this.placeFood(); }
+            update() { const h={x:this.snake[0].x+this.dx,y:this.snake[0].y+this.dy}; if(h.x<0||h.x>=20||h.y<0||h.y>=20||this.snake.some(p=>p.x===h.x&&p.y===h.y)){this.gameOver();return;} this.snake.unshift(h); if(h.x===this.food.x&&h.y===this.food.y){this.score++;this.scoreEl.innerText=this.score;this.placeFood();}else{this.snake.pop();} this.draw(); }
+            draw() { this.ctx.fillStyle='#111827';this.ctx.fillRect(0,0,400,400); this.ctx.fillStyle='#EF4444';this.ctx.beginPath();this.ctx.arc(this.food.x*20+10,this.food.y*20+10,8,0,Math.PI*2);this.ctx.fill(); this.snake.forEach((p,i)=>{this.ctx.fillStyle=i===0?'#10B981':'#34D399';this.ctx.fillRect(p.x*20+1,p.y*20+1,18,18);}); }
+            gameOver(){ this.isRunning=false; clearInterval(this.iv); this.modal.classList.remove('hidden'); this.modal.querySelector('h3').innerText='游戏结束'; this.modal.querySelector('p').innerText=`得分: ${this.score}`; this.modal.querySelector('button').innerText='再来'; }
+        }
+
+        class Game2048 {
+            constructor(c) { this.c=c; this.grid=Array(4).fill().map(()=>Array(4).fill(0)); this.ui=document.createElement('div'); this.ui.className='flex flex-col items-center gap-2 relative w-full'; this.ui.innerHTML=`<div class="flex justify-between w-full max-w-[320px] items-end"><div><div class="text-xs text-gray-500 font-bold">最大数字</div><div id="g2Score" class="text-xl font-bold text-gray-800">0</div></div><button id="g2Restart" class="px-3 py-1 bg-brand text-white text-xs font-bold rounded-lg shadow hidden">新游戏</button></div><div class="bg-gray-700 p-2 rounded-xl shadow-inner relative"><div id="g2Grid" class="grid grid-cols-4 gap-2"></div><div id="g2Modal" class="modal-overlay rounded-xl"><div class="modal-content"><h3 class="text-xl font-bold mb-1">2048</h3><p class="text-gray-500 mb-3 text-xs">挑战极限</p><button id="g2Start" class="px-4 py-1.5 bg-orange-500 rounded-full font-bold text-white text-sm w-full">开始</button></div></div></div><p class="text-xs text-gray-500">方向键移动</p>`; c.appendChild(this.ui); this.gridEl=this.ui.querySelector('#g2Grid'); this.modal=this.ui.querySelector('#g2Modal'); this.scoreEl=this.ui.querySelector('#g2Score'); this.ui.querySelector('#g2Start').onclick=()=>this.start(); this.ui.querySelector('#g2Restart').onclick=()=>this.start(); document.addEventListener('keydown',e=>this.handleKey(e)); this.initGrid(); }
+            initGrid() { this.gridEl.innerHTML=''; for(let i=0;i<16;i++) { let d=document.createElement('div'); d.className='w-14 h-14 rounded-lg bg-gray-600'; this.gridEl.appendChild(d); } }
+            start() { this.grid=Array(4).fill().map(()=>Array(4).fill(0)); this.addTile(); this.addTile(); this.modal.classList.add('hidden'); this.ui.querySelector('#g2Restart').classList.remove('hidden'); this.draw(); }
+            destroy() { this.ui.remove(); }
+            addTile() { let c=[]; for(let r=0;r<4;r++)for(let t=0;t<4;t++)if(this.grid[r][t]===0)c.push({r,c:t}); if(c.length){let m=c[Math.floor(Math.random()*c.length)];this.grid[m.r][m.c]=Math.random()<0.9?2:4;} }
+            getMax() { return Math.max(...this.grid.flat()); }
+            draw() { this.gridEl.innerHTML=''; const maxVal=this.getMax(); this.scoreEl.innerText=maxVal; for(let r=0;r<4;r++)for(let c=0;c<4;c++){ let v=this.grid[r][c]; let bg='bg-gray-600 text-gray-300'; if(v===2)bg='bg-orange-100 text-orange-800';if(v===4)bg='bg-orange-200 text-orange-900';if(v===8)bg='bg-orange-300 text-white'; if(v===16)bg='bg-orange-400 text-white';if(v===32)bg='bg-orange-500 text-white';if(v>=64)bg='bg-orange-600 text-white shadow-lg'; let d=document.createElement('div');d.className=`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-lg transition-all duration-100 ${bg}`;d.innerText=v||'';this.gridEl.appendChild(d); } }
+            handleKey(e) { if(this.modal.classList.contains('hidden')===false) return; if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return; e.preventDefault(); let d=e.key.replace('Arrow','').toLowerCase(); let moved=this.move(d); if(moved){this.addTile();this.draw(); this.checkGameOver();} }
+            move(d) { let rot={'left':0,'up':3,'right':2,'down':1}[d]; for(let i=0;i<rot;i++){let n=Array(4).fill().map(()=>Array(4).fill(0));for(let r=0;r<4;r++)for(let c=0;c<4;c++)n[c][3-r]=this.grid[r][c];this.grid=n;} let m=false; for(let r=0;r<4;r++){ let row=this.grid[r].filter(v=>v);let nr=[]; while(row.length>0){ if(row.length>1&&row[0]===row[1]){nr.push(row[0]*2);row.shift();row.shift();}else{nr.push(row[0]);row.shift();} } while(nr.length<4)nr.push(0); for(let c=0;c<4;c++)if(this.grid[r][c]!==nr[c])m=true; this.grid[r]=nr; } for(let i=0;i<(4-rot)%4;i++){let n=Array(4).fill().map(()=>Array(4).fill(0));for(let r=0;r<4;r++)for(let c=0;c<4;c++)n[c][3-r]=this.grid[r][c];this.grid=n;} return m; }
+            checkGameOver() { if(this.grid.flat().includes(0)) return; for(let r=0; r<4; r++) for(let c=0; c<4; c++) { if(c<3 && this.grid[r][c] === this.grid[r][c+1]) return; if(r<3 && this.grid[r][c] === this.grid[r+1][c]) return; } this.modal.classList.remove('hidden'); this.modal.querySelector('h3').innerText='游戏结束'; this.modal.querySelector('p').innerText=`最大: ${this.getMax()}`; this.modal.querySelector('button').innerText='再来'; }
+        }
+
+        class WhackAMoleGame {
+            constructor(c) { this.c=c; this.score=0; this.timeUp=true; this.ui=document.createElement('div'); this.ui.className='flex flex-col items-center gap-2 relative w-full'; this.ui.innerHTML=`<div class="flex justify-between w-full max-w-sm font-bold text-gray-700"><span>得分: <span id="wScore">0</span></span><span>时间: <span id="wTime">30</span>s</span></div><div class="relative bg-amber-100 p-3 rounded-xl border-2 border-amber-200 shadow-inner w-full max-w-sm"><div class="grid grid-cols-3 gap-3 place-items-center">${Array(9).fill(0).map((_,i)=>`<div class="hole" data-id="${i}"><div class="mole"></div></div>`).join('')}</div><div id="wModal" class="modal-overlay"><div class="modal-content"><h3 class="text-xl font-bold mb-1">打地鼠</h3><p class="text-gray-500 mb-3 text-xs">红+10 蓝-5</p><button id="wStart" class="px-4 py-1.5 bg-amber-500 rounded-full font-bold text-white text-sm w-full">开始</button></div></div></div><div class="text-center text-xs text-gray-500"><span class="inline-block w-2 h-2 bg-red-500 rounded-full align-middle"></span> 红+10 <span class="inline-block w-2 h-2 bg-blue-500 rounded-full align-middle ml-2"></span> 蓝-5</div>`; c.appendChild(this.ui); this.scoreBoard=this.ui.querySelector('#wScore'); this.timeBoard=this.ui.querySelector('#wTime'); this.modal=this.ui.querySelector('#wModal'); this.holes=this.ui.querySelectorAll('.hole'); this.holes.forEach(hole=>{hole.addEventListener('click',e=>{const mole=hole.querySelector('.mole');if(e.target===mole||e.target===hole)this.bonk(mole);});}); this.ui.querySelector('#wStart').addEventListener('click',this.startGame.bind(this)); }
+            startGame() { this.score=0; this.scoreBoard.textContent=0; this.timeUp=false; this.timeBoard.textContent=30; this.modal.classList.add('hidden'); this.peep(); let timeLeft=30; const timer=setInterval(()=>{ timeLeft--; this.timeBoard.textContent=timeLeft; if(timeLeft<=0){ clearInterval(timer); this.timeUp=true; setTimeout(()=>this.showGameOver(),100); } },1000); }
+            showGameOver() { this.modal.classList.remove('hidden'); this.modal.querySelector('h3').innerText='游戏结束'; this.modal.querySelector('p').innerText=`得分: ${this.score}`; this.modal.querySelector('button').innerText='再来'; }
+            peep() { if(this.timeUp)return; const hole=this.holes[Math.floor(Math.random()*this.holes.length)]; const mole=hole.querySelector('.mole'); const isBlue=Math.random()<0.3; mole.className=`mole ${isBlue?'blue':'red'} up`; const time=isBlue?this.randomTime(800,1200):this.randomTime(800,1500); setTimeout(()=>{ mole.classList.remove('up'); if(!this.timeUp)this.peep(); },time); }
+            randomTime(min,max) { return Math.round(Math.random()*(max-min)+min); }
+            bonk(mole) { if(!mole.classList.contains('up')||this.timeUp)return; mole.classList.remove('up'); if(mole.classList.contains('blue'))this.score-=5; else this.score+=10; this.scoreBoard.textContent=this.score; }
+            destroy() { this.ui.remove(); }
+        }
+
+        class MemoryGame {
+            constructor(c) { this.c=c; this.cardsArray=[{n:'star',c:'⭐️'},{n:'star',c:'⭐️'},{n:'heart',c:'❤️'},{n:'heart',c:'❤️'},{n:'apple',c:'🍎'},{n:'apple',c:'🍎'},{n:'rocket',c:'🚀'},{n:'rocket',c:'🚀'},{n:'cat',c:'🐱'},{n:'cat',c:'🐱'},{n:'ghost',c:'👻'},{n:'ghost',c:'👻'}]; this.ui=document.createElement('div'); this.ui.className='flex flex-col items-center gap-2 relative w-full max-w-sm'; this.ui.innerHTML=`<div class="font-bold text-gray-700 w-full flex justify-between px-1 text-sm"><span>用时: <span id="mTime">0.0</span>s</span><span>配对: <span id="mMatch">0</span>/6</span></div><div class="grid grid-cols-4 gap-2 w-full" id="mGrid"></div><div id="mModal" class="modal-overlay"><div class="modal-content"><h3 class="text-xl font-bold mb-1">记忆翻牌</h3><p class="text-gray-500 mb-3 text-xs">找出配对</p><button id="mStart" class="px-4 py-1.5 bg-blue-500 rounded-full font-bold text-white text-sm w-full">开始</button></div></div>`; c.appendChild(this.ui); this.grid=this.ui.querySelector('#mGrid'); this.timeEl=this.ui.querySelector('#mTime'); this.matchEl=this.ui.querySelector('#mMatch'); this.modal=this.ui.querySelector('#mModal'); this.ui.querySelector('#mStart').addEventListener('click',()=>this.start()); this.initCards(); }
+            start() { this.modal.classList.add('hidden'); this.matchedPairs=0; this.matchEl.innerText=0; this.hasFlippedCard=false; this.lockBoard=false; this.firstCard=null; this.secondCard=null; this.timerRunning=false; this.startTime=0; this.timeEl.innerText='0.0'; if(this.timerInterval)clearInterval(this.timerInterval); this.cardsArray.sort(()=>0.5-Math.random()); this.grid.innerHTML=''; this.initCards(); }
+            initCards() { this.cardsArray.forEach(item=>{ const card=document.createElement('div'); card.classList.add('memory-card','w-12','h-12'); card.dataset.name=item.n; card.innerHTML=`<div class="memory-card-inner w-full h-full"><div class="memory-front text-xl">❓</div><div class="memory-back text-xl">${item.c}</div></div>`; card.addEventListener('click',()=>this.flipCard(card)); this.grid.appendChild(card); }); }
+            flipCard(card) { if(this.lockBoard)return; if(card===this.firstCard)return; if(!this.timerRunning){ this.timerRunning=true; this.startTime=Date.now(); this.timerInterval=setInterval(()=>{ const elapsed=(Date.now()-this.startTime)/1000; this.timeEl.innerText=elapsed.toFixed(1); },100); } card.classList.add('flipped'); if(!this.hasFlippedCard){ this.hasFlippedCard=true; this.firstCard=card; return; } this.secondCard=card; this.checkForMatch(); }
+            checkForMatch() { let isMatch=this.firstCard.dataset.name===this.secondCard.dataset.name; isMatch?this.disableCards():this.unflipCards(); }
+            disableCards() { this.firstCard.removeEventListener('click',this.flipCard); this.secondCard.removeEventListener('click',this.flipCard); this.matchedPairs++; this.matchEl.innerText=this.matchedPairs; this.resetBoard(); if(this.matchedPairs===this.cardsArray.length/2){ clearInterval(this.timerInterval); const finalTime=this.timeEl.innerText; setTimeout(()=>{ this.modal.classList.remove('hidden'); this.modal.querySelector('h3').innerText='恭喜通关!'; this.modal.querySelector('p').innerText=`用时: ${finalTime}秒`; this.modal.querySelector('button').innerText='再来'; },500); } }
+            unflipCards() { this.lockBoard=true; setTimeout(()=>{ this.firstCard.classList.remove('flipped'); this.secondCard.classList.remove('flipped'); this.resetBoard(); },1000); }
+            resetBoard() { [this.hasFlippedCard,this.lockBoard]=[false,false]; [this.firstCard,this.secondCard]=[null,null]; }
+            destroy() { if(this.timerInterval)clearInterval(this.timerInterval); this.ui.remove(); }
+        }
+
+        // --- 简历生成器功能 ---
+        let resumeData = {
+            id: null,
+            name: '',
+            phone: '',
+            email: '',
+            location: '',
+            gender: '',
+            avatar: null,
+            education: [],
+            experience: [],
+            projects: [],
+            research: [],
+            awards: [],
+            selfEvaluation: '',
+            fontSize: '10.5',
+            lineSpacing: '1',
+            marginTop: '0.9',
+            marginBottom: '0.9',
+            versionName: '',
+            createdAt: null,
+            updatedAt: null
+        };
+        let educationCounter = 0;
+        let experienceCounter = 0;
+        let projectCounter = 0;
+        let researchCounter = 0;
+        let awardCounter = 0;
+
+        const resumeModules = [
+            { id: 'basicInfo', name: '基本信息', icon: 'fa-user', enabled: true, required: true },
+            { id: 'education', name: '教育背景', icon: 'fa-graduation-cap', enabled: true },
+            { id: 'experience', name: '实习/工作经历', icon: 'fa-briefcase', enabled: true },
+            { id: 'project', name: '项目经历', icon: 'fa-rocket', enabled: true },
+            { id: 'research', name: '科研经历', icon: 'fa-flask', enabled: true },
+            { id: 'award', name: '获奖经历', icon: 'fa-trophy', enabled: true },
+            { id: 'selfEvaluation', name: '自我评价', icon: 'fa-star', enabled: true }
+        ];
+
+        function initResumeEditor() {
+            migrateOldResumes();
+            loadResumeFromStorage();
+            loadModuleConfig();
+            initDefaultProject();
+            updateLatexPreview();
+            document.querySelectorAll('#resumeEditor input, #resumeEditor select, #resumeEditor textarea').forEach(el => {
+                el.addEventListener('input', () => {
+                    collectBasicInfo();
+                    updateLatexPreview();
+                });
+            });
+        }
+
+        function initDefaultProject() {
+            if (resumeData.projects.length > 0) return;
+            
+            const project = {
+                name: '个人网站开发',
+                time: '2024.01 - 至今',
+                items: [
+                    '独立开发个人网站，包含摸鱼小游戏、简历编辑器、体育新闻追踪三大核心功能，展现产品思维和全栈开发能力',
+                    '简历编辑器：设计并实现简历编辑器，支持用户自定义模块、LaTeX代码实时预览、PDF自动生成，解决用户简历制作痛点；开发智能页面布局算法，通过遍历972种参数组合，自动计算最优字体、行间距和边距配置，确保简历内容完美适配一页；采用模块化设计思想，支持用户自定义简历模块（基本信息、教育背景、实习经历等），满足不同求职场景需求',
+                    '摸鱼小游戏：设计并实现摸鱼小游戏模块，包含贪吃蛇、2048、打地鼠、记忆翻牌等经典游戏，提供休闲娱乐功能；采用面向对象设计思想，模块化游戏引擎架构，支持游戏状态管理和分数统计，提升用户体验和可扩展性',
+                    '体育热点追踪：设计并实现体育热点追踪模块，覆盖中超、CBA、英超、NBA、网球四大满贯等主流赛事，提供实时比分、积分榜和新闻聚合功能；集成智谱AI API和RSS源，实现新闻智能聚合和定时更新，日均更新新闻30+条，提升信息获取效率',
+                    '后端存储系统：实现后端简历存储系统，解决浏览器存储限制问题，支持简历版本管理和历史记录功能'
+                ]
+            };
+            
+            resumeData.projects.push(project);
+            
+            const id = ++projectCounter;
+            const html = `
+                <div id="proj-${id}" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-medium text-gray-600">项目经历 #${id}</span>
+                        <button onclick="removeProject(${id})" class="text-red-500 hover:text-red-700 text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" placeholder="项目名称" class="proj-name px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectProjectData();updateLatexPreview()" value="${project.name}">
+                        <input type="text" placeholder="时间段" class="proj-time px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectProjectData();updateLatexPreview()" value="${project.time}">
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-500">项目描述/职责</span>
+                            <button onclick="addProjItem(${id})" class="text-brand text-xs hover:underline">+ 添加条目</button>
+                        </div>
+                        <div class="proj-items space-y-2"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('projectList').insertAdjacentHTML('beforeend', html);
+            
+            const itemsContainer = document.querySelector(`#proj-${id} .proj-items`);
+            project.items.forEach(item => {
+                const itemId = Date.now() + Math.random();
+                const itemHtml = `
+                    <div id="projitem-${itemId}" class="flex gap-2 items-start">
+                        <textarea placeholder="项目描述..." class="proj-item-content flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="3" onchange="collectProjectData();updateLatexPreview()">${item}</textarea>
+                        <button onclick="removeProjItem(${itemId})" class="text-gray-400 hover:text-red-500 mt-2">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                itemsContainer.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        async function migrateOldResumes() {
+            const oldResumes = localStorage.getItem('resumes');
+            if (!oldResumes) return;
+            
+            const resumes = JSON.parse(oldResumes);
+            if (resumes.length === 0) return;
+            
+            const migrated = localStorage.getItem('resumesMigrated');
+            if (migrated === 'true') return;
+            
+            const message = `检测到您有${resumes.length}份旧简历保存在浏览器中，是否迁移到服务器？\n\n迁移后旧简历将自动删除。`;
+            if (!confirm(message)) {
+                localStorage.setItem('resumesMigrated', 'true');
+                return;
+            }
+            
+            try {
+                let successCount = 0;
+                for (const resume of resumes) {
+                    const response = await fetch('http://localhost:3000/api/resumes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(resume)
+                    });
+                    
+                    if (response.ok) {
+                        successCount++;
+                    }
+                }
+                
+                if (successCount > 0) {
+                    localStorage.removeItem('resumes');
+                    localStorage.setItem('resumesMigrated', 'true');
+                    alert(`成功迁移${successCount}份简历到服务器！`);
+                } else {
+                    alert('迁移失败，请检查服务器连接');
+                }
+            } catch (error) {
+                console.error('迁移失败:', error);
+                alert('迁移失败: ' + error.message);
+            }
+        }
+
+        function collectBasicInfo() {
+            resumeData.name = document.getElementById('resumeName').value;
+            resumeData.phone = document.getElementById('resumePhone').value;
+            resumeData.email = document.getElementById('resumeEmail').value;
+            resumeData.location = document.getElementById('resumeLocation').value;
+            resumeData.gender = document.getElementById('resumeGender').value;
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    resumeData.avatar = e.target.result;
+                    const avatarImg = document.getElementById('avatarImg');
+                    const avatarIcon = document.getElementById('avatarIcon');
+                    avatarImg.src = e.target.result;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                    updateLatexPreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function addEducation() {
+            const id = ++educationCounter;
+            const html = `
+                <div id="edu-${id}" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-medium text-gray-600">教育经历 #${id}</span>
+                        <button onclick="removeEducation(${id})" class="text-red-500 hover:text-red-700 text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" placeholder="学校名称" class="edu-school px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectEducationData();updateLatexPreview()">
+                        <input type="text" placeholder="专业" class="edu-major px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectEducationData();updateLatexPreview()">
+                        <input type="text" placeholder="学历 (学士/硕士/博士)" class="edu-degree px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectEducationData();updateLatexPreview()">
+                        <input type="text" placeholder="时间段 (如: 2020.09 - 2024.06)" class="edu-time px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectEducationData();updateLatexPreview()">
+                    </div>
+                    <div class="mt-3">
+                        <textarea placeholder="主修课程 (用逗号分隔)" class="edu-courses w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="2" onchange="collectEducationData();updateLatexPreview()"></textarea>
+                    </div>
+                    <div class="mt-2">
+                        <textarea placeholder="技能水平 (如: 六级 612, Python, SQL)" class="edu-skills w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="2" onchange="collectEducationData();updateLatexPreview()"></textarea>
+                    </div>
+                </div>
+            `;
+            document.getElementById('educationList').insertAdjacentHTML('beforeend', html);
+            collectEducationData();
+        }
+
+        function removeEducation(id) {
+            document.getElementById(`edu-${id}`).remove();
+            collectEducationData();
+            updateLatexPreview();
+        }
+
+        function collectEducationData() {
+            resumeData.education = [];
+            document.querySelectorAll('#educationList > div').forEach(el => {
+                resumeData.education.push({
+                    school: el.querySelector('.edu-school')?.value || '',
+                    major: el.querySelector('.edu-major')?.value || '',
+                    degree: el.querySelector('.edu-degree')?.value || '',
+                    time: el.querySelector('.edu-time')?.value || '',
+                    courses: el.querySelector('.edu-courses')?.value || '',
+                    skills: el.querySelector('.edu-skills')?.value || ''
+                });
+            });
+        }
+
+        function addExperience() {
+            const id = ++experienceCounter;
+            const html = `
+                <div id="exp-${id}" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-medium text-gray-600">工作经历 #${id}</span>
+                        <button onclick="removeExperience(${id})" class="text-red-500 hover:text-red-700 text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input type="text" placeholder="公司名称" class="exp-company px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectExperienceData();updateLatexPreview()">
+                        <input type="text" placeholder="职位" class="exp-position px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectExperienceData();updateLatexPreview()">
+                        <input type="text" placeholder="时间段" class="exp-time px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectExperienceData();updateLatexPreview()">
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-500">工作内容/项目经历</span>
+                            <button onclick="addExpItem(${id})" class="text-brand text-xs hover:underline">+ 添加条目</button>
+                        </div>
+                        <div class="exp-items space-y-2"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('experienceList').insertAdjacentHTML('beforeend', html);
+            collectExperienceData();
+        }
+
+        function addExpItem(expId) {
+            const expEl = document.getElementById(`exp-${expId}`);
+            const itemsContainer = expEl.querySelector('.exp-items');
+            const itemId = Date.now();
+            const html = `
+                <div id="expitem-${itemId}" class="flex gap-2 items-start">
+                    <textarea placeholder="项目名称：项目描述..." class="exp-item-content flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="3" onchange="collectExperienceData();updateLatexPreview()"></textarea>
+                    <button onclick="removeExpItem(${itemId})" class="text-gray-400 hover:text-red-500 mt-2">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            `;
+            itemsContainer.insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeExpItem(itemId) {
+            document.getElementById(`expitem-${itemId}`).remove();
+            collectExperienceData();
+            updateLatexPreview();
+        }
+
+        function removeExperience(id) {
+            document.getElementById(`exp-${id}`).remove();
+            collectExperienceData();
+            updateLatexPreview();
+        }
+
+        function collectExperienceData() {
+            resumeData.experience = [];
+            document.querySelectorAll('#experienceList > div').forEach(el => {
+                const items = [];
+                el.querySelectorAll('.exp-item-content').forEach(item => {
+                    if (item.value.trim()) items.push(item.value.trim());
+                });
+                resumeData.experience.push({
+                    company: el.querySelector('.exp-company')?.value || '',
+                    position: el.querySelector('.exp-position')?.value || '',
+                    time: el.querySelector('.exp-time')?.value || '',
+                    items: items
+                });
+            });
+        }
+
+        function addProject() {
+            const id = ++projectCounter;
+            const html = `
+                <div id="proj-${id}" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-medium text-gray-600">项目经历 #${id}</span>
+                        <button onclick="removeProject(${id})" class="text-red-500 hover:text-red-700 text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" placeholder="项目名称" class="proj-name px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectProjectData();updateLatexPreview()">
+                        <input type="text" placeholder="时间段" class="proj-time px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectProjectData();updateLatexPreview()">
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-500">项目描述/职责</span>
+                            <button onclick="addProjItem(${id})" class="text-brand text-xs hover:underline">+ 添加条目</button>
+                        </div>
+                        <div class="proj-items space-y-2"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('projectList').insertAdjacentHTML('beforeend', html);
+            collectProjectData();
+        }
+
+        function addProjItem(projId) {
+            const projEl = document.getElementById(`proj-${projId}`);
+            const itemsContainer = projEl.querySelector('.proj-items');
+            const itemId = Date.now();
+            const html = `
+                <div id="projitem-${itemId}" class="flex gap-2 items-start">
+                    <textarea placeholder="项目描述..." class="proj-item-content flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="3" onchange="collectProjectData();updateLatexPreview()"></textarea>
+                    <button onclick="removeProjItem(${itemId})" class="text-gray-400 hover:text-red-500 mt-2">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            `;
+            itemsContainer.insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeProjItem(itemId) {
+            document.getElementById(`projitem-${itemId}`).remove();
+            collectProjectData();
+            updateLatexPreview();
+        }
+
+        function removeProject(id) {
+            document.getElementById(`proj-${id}`).remove();
+            collectProjectData();
+            updateLatexPreview();
+        }
+
+        function collectProjectData() {
+            resumeData.projects = [];
+            document.querySelectorAll('#projectList > div').forEach(el => {
+                const items = [];
+                el.querySelectorAll('.proj-item-content').forEach(itemEl => {
+                    const content = itemEl.value || '';
+                    if (content) items.push(content);
+                });
+                resumeData.projects.push({
+                    name: el.querySelector('.proj-name')?.value || '',
+                    time: el.querySelector('.proj-time')?.value || '',
+                    items: items
+                });
+            });
+        }
+
+        function addResearch() {
+            const id = ++researchCounter;
+            const html = `
+                <div id="res-${id}" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-medium text-gray-600">科研经历 #${id}</span>
+                        <button onclick="removeResearch(${id})" class="text-red-500 hover:text-red-700 text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" placeholder="项目/课题名称" class="res-name px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectResearchData();updateLatexPreview()">
+                        <input type="text" placeholder="时间段" class="res-time px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectResearchData();updateLatexPreview()">
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-500">研究内容/成果</span>
+                            <button onclick="addResItem(${id})" class="text-brand text-xs hover:underline">+ 添加条目</button>
+                        </div>
+                        <div class="res-items space-y-2"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('researchList').insertAdjacentHTML('beforeend', html);
+            collectResearchData();
+        }
+
+        function addResItem(resId) {
+            const resEl = document.getElementById(`res-${resId}`);
+            const itemsContainer = resEl.querySelector('.res-items');
+            const itemId = Date.now();
+            const html = `
+                <div id="resitem-${itemId}" class="flex gap-2 items-start">
+                    <textarea placeholder="研究内容..." class="res-item-content flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand resize-none" rows="3" onchange="collectResearchData();updateLatexPreview()"></textarea>
+                    <button onclick="removeResItem(${itemId})" class="text-gray-400 hover:text-red-500 mt-2">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            `;
+            itemsContainer.insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeResItem(itemId) {
+            document.getElementById(`resitem-${itemId}`).remove();
+            collectResearchData();
+            updateLatexPreview();
+        }
+
+        function removeResearch(id) {
+            document.getElementById(`res-${id}`).remove();
+            collectResearchData();
+            updateLatexPreview();
+        }
+
+        function collectResearchData() {
+            resumeData.research = [];
+            document.querySelectorAll('#researchList > div').forEach(el => {
+                const items = [];
+                el.querySelectorAll('.res-item-content').forEach(itemEl => {
+                    const content = itemEl.value || '';
+                    if (content) items.push(content);
+                });
+                resumeData.research.push({
+                    name: el.querySelector('.res-name')?.value || '',
+                    time: el.querySelector('.res-time')?.value || '',
+                    items: items
+                });
+            });
+        }
+
+        function addAward() {
+            const id = ++awardCounter;
+            const html = `
+                <div id="award-${id}" class="flex gap-3 items-center bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <input type="text" placeholder="奖项名称" class="award-name flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectAwardData();updateLatexPreview()">
+                    <input type="text" placeholder="获奖时间" class="award-time w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand" onchange="collectAwardData();updateLatexPreview()">
+                    <button onclick="removeAward(${id})" class="text-red-500 hover:text-red-700">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('awardList').insertAdjacentHTML('beforeend', html);
+            collectAwardData();
+        }
+
+        function removeAward(id) {
+            document.getElementById(`award-${id}`).remove();
+            collectAwardData();
+            updateLatexPreview();
+        }
+
+        function collectAwardData() {
+            resumeData.awards = [];
+            document.querySelectorAll('#awardList > div').forEach(el => {
+                const name = el.querySelector('.award-name')?.value || '';
+                const time = el.querySelector('.award-time')?.value || '';
+                if (name) resumeData.awards.push({ name, time });
+            });
+        }
+
+        function escapeLatex(str) {
+            if (!str) return '';
+            return str.replace(/\\/g, '\\textbackslash{}')
+                      .replace(/&/g, '\\&')
+                      .replace(/%/g, '\\%')
+                      .replace(/\$/g, '\\$')
+                      .replace(/#/g, '\\#')
+                      .replace(/_/g, '\\_')
+                      .replace(/\{/g, '\\{')
+                      .replace(/\}/g, '\\}')
+                      .replace(/~/g, '\\textasciitilde{}')
+                      .replace(/\^/g, '\\textasciicircum{}');
+        }
+
+        function generateLatex() {
+            const fontSize = document.getElementById('fontSize')?.value || '10.5';
+            const lineSpacing = document.getElementById('lineSpacing')?.value || '1';
+            const marginTop = document.getElementById('marginTop')?.value || '0.9';
+            const marginBottom = document.getElementById('marginBottom')?.value || '0.9';
+            
+            let latex = `\\documentclass[${fontSize}pt]{resume}
+\\usepackage{zh_CN-Adobefonts_external}
+\\usepackage{linespacing_fix}
+\\usepackage{cite}
+\\usepackage{enumitem}
+\\usepackage{geometry}
+\\geometry{top=${marginTop}cm,bottom=${marginBottom}cm,left=0.9cm,right=0.9cm}
+\\linespread{${lineSpacing}}
+\\setlength{\\parskip}{0pt}
+\\begin{document}
+\\pagenumbering{gobble}
+
+`;
+
+            const basicInfoModule = resumeModules.find(m => m.id === 'basicInfo');
+            if (basicInfoModule && basicInfoModule.enabled && resumeData.name) {
+                latex += `\\name{${escapeLatex(resumeData.name)}}\n`;
+                latex += `\\otherInfo{手机:${escapeLatex(resumeData.phone)}}{邮箱:${escapeLatex(resumeData.email)}}{}{}\n`;
+                if (resumeData.gender || resumeData.location) {
+                    latex += `\\otherInfo{性别:${escapeLatex(resumeData.gender)}}{base:${escapeLatex(resumeData.location)}}{}{}\n`;
+                }
+                if (resumeData.avatar) {
+                    latex += `\\yourphoto{0.10}\n`;
+                }
+                latex += `\\vspace{-1.5em}\n`;
+            }
+
+            const educationModule = resumeModules.find(m => m.id === 'education');
+            if (educationModule && educationModule.enabled && resumeData.education.length > 0) {
+                latex += `\\section{教育背景}\n`;
+                resumeData.education.forEach((edu, index) => {
+                    if (edu.school) {
+                        latex += `\\datedsubsection{\\textbf{${escapeLatex(edu.school)}}，${escapeLatex(edu.major)}专业，\\textit{${escapeLatex(edu.degree)}}}{${escapeLatex(edu.time)}}\n`;
+                        if (edu.courses || edu.skills) {
+                            latex += `\\begin{itemize}\n`;
+                            if (edu.courses) {
+                                latex += `\\item \\textbf{主修课程}：${escapeLatex(edu.courses)}\n`;
+                            }
+                            if (edu.skills) {
+                                latex += `\\item \\textbf{技能水平}：${escapeLatex(edu.skills)}\n`;
+                            }
+                            latex += `\\end{itemize}\n`;
+                        }
+                        if (index < resumeData.education.length - 1) {
+                            latex += `\\vspace{-1.2ex}\n`;
+                        }
+                    }
+                });
+            }
+
+            const experienceModule = resumeModules.find(m => m.id === 'experience');
+            if (experienceModule && experienceModule.enabled && resumeData.experience.length > 0) {
+                latex += `\\section{实习经历}\n`;
+                resumeData.experience.forEach((exp, index) => {
+                    if (exp.company) {
+                        latex += `\\datedsubsection{\\textbf{${escapeLatex(exp.company)}}，${escapeLatex(exp.position)}}{${escapeLatex(exp.time)}}\n`;
+                        if (exp.items && exp.items.length > 0) {
+                            latex += `\\begin{itemize}\n`;
+                            exp.items.forEach(item => {
+                                const parts = item.split('：');
+                                if (parts.length >= 2) {
+                                    latex += `\\item \\textbf{${escapeLatex(parts[0])}}：${escapeLatex(parts.slice(1).join('：'))}\n`;
+                                } else {
+                                    latex += `\\item ${escapeLatex(item)}\n`;
+                                }
+                            });
+                            latex += `\\end{itemize}\n`;
+                        }
+                        if (index < resumeData.experience.length - 1) {
+                            latex += `\\vspace{-0.6em}\n`;
+                        }
+                    }
+                });
+            }
+
+            const projectModule = resumeModules.find(m => m.id === 'project');
+            if (projectModule && projectModule.enabled && resumeData.projects.length > 0) {
+                latex += `\\section{项目经历}\n`;
+                resumeData.projects.forEach((proj, index) => {
+                    if (proj.name) {
+                        latex += `\\datedsubsection{\\textbf{${escapeLatex(proj.name)}}}{${escapeLatex(proj.time)}}\n`;
+                        if (proj.items && proj.items.length > 0) {
+                            latex += `\\begin{itemize}\n`;
+                            proj.items.forEach(item => {
+                                const parts = item.split('：');
+                                if (parts.length >= 2) {
+                                    latex += `\\item \\textbf{${escapeLatex(parts[0])}}：${escapeLatex(parts.slice(1).join('：'))}\n`;
+                                } else {
+                                    latex += `\\item ${escapeLatex(item)}\n`;
+                                }
+                            });
+                            latex += `\\end{itemize}\n`;
+                        }
+                        if (index < resumeData.projects.length - 1) {
+                            latex += `\\vspace{-0.6em}\n`;
+                        }
+                    }
+                });
+            }
+
+            const researchModule = resumeModules.find(m => m.id === 'research');
+            if (researchModule && researchModule.enabled && resumeData.research.length > 0) {
+                latex += `\\section{科研经历}\n`;
+                resumeData.research.forEach((res, index) => {
+                    if (res.name) {
+                        latex += `\\datedsubsection{\\textbf{${escapeLatex(res.name)}}}{${escapeLatex(res.time)}}\n`;
+                        if (res.items && res.items.length > 0) {
+                            latex += `\\begin{itemize}\n`;
+                            res.items.forEach(item => {
+                                latex += `\\item ${escapeLatex(item)}\n`;
+                            });
+                            latex += `\\end{itemize}\n`;
+                        }
+                        if (index < resumeData.research.length - 1) {
+                            latex += `\\vspace{-0.6em}\n`;
+                        }
+                    }
+                });
+            }
+
+            const awardModule = resumeModules.find(m => m.id === 'award');
+            if (awardModule && awardModule.enabled && resumeData.awards.length > 0) {
+                latex += `\\section{获奖经历}\n`;
+                resumeData.awards.forEach((award, index) => {
+                    latex += `\\datedsubsection{\\fontsize{10}{10}\\selectfont ${escapeLatex(award.name)}}{${escapeLatex(award.time)}}\n`;
+                    if (index < resumeData.awards.length - 1) {
+                        latex += `\\vspace{-0.15em}\n`;
+                    }
+                });
+            }
+
+            const selfEvaluationModule = resumeModules.find(m => m.id === 'selfEvaluation');
+            if (selfEvaluationModule && selfEvaluationModule.enabled && resumeData.selfEvaluation) {
+                latex += `\\section{自我评价}\n`;
+                latex += `\\begin{itemize}\n`;
+                const sentences = resumeData.selfEvaluation.split(/[。；；\n]/).filter(s => s.trim());
+                sentences.forEach(sentence => {
+                    latex += `\\item ${escapeLatex(sentence.trim())}\n`;
+                });
+                latex += `\\end{itemize}\n`;
+            }
+
+            latex += `\n\\end{document}\n`;
+            return latex;
+        }
+
+        function updateLatexPreview() {
+            const latex = generateLatex();
+            document.getElementById('latexPreview').textContent = latex;
+        }
+
+        function estimateContentLength() {
+            let length = 0;
+            
+            if (resumeData.name) length += resumeData.name.length * 2;
+            if (resumeData.phone) length += resumeData.phone.length;
+            if (resumeData.email) length += resumeData.email.length;
+            if (resumeData.location) length += resumeData.location.length;
+            
+            resumeData.education.forEach(edu => {
+                length += (edu.school || '').length * 1.5;
+                length += (edu.major || '').length * 1.2;
+                length += (edu.degree || '').length;
+                length += (edu.courses || '').length * 0.8;
+                length += (edu.skills || '').length * 0.8;
+            });
+            
+            resumeData.experience.forEach(exp => {
+                length += (exp.company || '').length * 1.5;
+                length += (exp.position || '').length * 1.2;
+                exp.items.forEach(item => {
+                    length += item.length * 0.9;
+                });
+            });
+            
+            resumeData.projects.forEach(proj => {
+                length += (proj.name || '').length * 1.3;
+                proj.items.forEach(item => {
+                    length += item.length * 0.9;
+                });
+            });
+            
+            resumeData.research.forEach(res => {
+                length += (res.name || '').length * 1.3;
+                res.items.forEach(item => {
+                    length += item.length * 0.9;
+                });
+            });
+            
+            resumeData.awards.forEach(award => {
+                length += (award.name || '').length * 1.2;
+            });
+            
+            if (resumeData.selfEvaluation) {
+                length += resumeData.selfEvaluation.length * 0.8;
+            }
+            
+            return length;
+        }
+
+        function calculatePageScore(fontSize, lineSpacing, marginTop, marginBottom) {
+            const contentLength = estimateContentLength();
+            
+            const fontSizeNum = parseFloat(fontSize);
+            const lineSpacingNum = parseFloat(lineSpacing);
+            const marginTopNum = parseFloat(marginTop);
+            const marginBottomNum = parseFloat(marginBottom);
+            
+            const fontSizeFactor = 14 / fontSizeNum;
+            const lineSpacingFactor = 1 / lineSpacingNum;
+            
+            const availableWidth = 21 * (1 - 0.9 * 2 / 21);
+            const availableHeight = 29.7 * (1 - (marginTopNum + marginBottomNum) / 29.7);
+            
+            const charWidth = fontSizeNum * 0.35;
+            const lineHeight = fontSizeNum * lineSpacingNum * 0.5;
+            
+            const estimatedLines = Math.ceil(contentLength / (availableWidth / charWidth));
+            const estimatedHeight = estimatedLines * lineHeight;
+            
+            const heightRatio = estimatedHeight / availableHeight;
+            
+            let score = 0;
+            
+            if (heightRatio <= 0.85) {
+                score = 100 - (0.85 - heightRatio) * 200;
+            } else if (heightRatio <= 0.95) {
+                score = 100 - (heightRatio - 0.85) * 50;
+            } else if (heightRatio <= 1.05) {
+                score = 100 - (heightRatio - 0.95) * 200;
+            } else {
+                score = 90 - (heightRatio - 1.05) * 300;
+            }
+            
+            if (fontSizeNum < 9) score -= 20;
+            if (fontSizeNum > 13) score -= 20;
+            if (lineSpacingNum < 0.7) score -= 15;
+            if (lineSpacingNum > 1.3) score -= 15;
+            if (marginTopNum < 0.6) score -= 5;
+            if (marginTopNum > 1.8) score -= 5;
+            if (marginBottomNum < 0.6) score -= 5;
+            if (marginBottomNum > 1.8) score -= 5;
+            
+            return { score, heightRatio, estimatedHeight, availableHeight };
+        }
+
+        function autoAdjustLayout() {
+            const contentLength = estimateContentLength();
+            
+            let bestConfig = { fontSize: '10.5', lineSpacing: '1', marginTop: '0.9', marginBottom: '0.9' };
+            let bestScore = -Infinity;
+            
+            const fontSizes = ['8', '9', '10', '10.5', '11', '11.5', '12', '12.5', '13', '14'];
+            const lineSpacings = ['0.6', '0.7', '0.8', '0.9', '1', '1.1', '1.2', '1.3', '1.4'];
+            const margins = ['0.5', '0.6', '0.7', '0.8', '0.9', '1', '1.1', '1.2', '1.3', '1.5', '1.8', '2'];
+            
+            for (const fontSize of fontSizes) {
+                for (const lineSpacing of lineSpacings) {
+                    for (const marginTop of margins) {
+                        for (const marginBottom of margins) {
+                            const result = calculatePageScore(fontSize, lineSpacing, marginTop, marginBottom);
+                            if (result.score > bestScore) {
+                                bestScore = result.score;
+                                bestConfig = { fontSize, lineSpacing, marginTop, marginBottom, ...result };
+                            }
+                        }
+                    }
+                }
+            }
+            
+            document.getElementById('fontSize').value = bestConfig.fontSize;
+            document.getElementById('lineSpacing').value = bestConfig.lineSpacing;
+            document.getElementById('marginTop').value = bestConfig.marginTop;
+            document.getElementById('marginBottom').value = bestConfig.marginBottom;
+            
+            updateLatexPreview();
+            
+            const fontSizeMap = {
+                '8': '极小', '9': '很小', '10': '小', '10.5': '默认',
+                '11': '中', '11.5': '中偏大', '12': '大', '12.5': '较大', '13': '很大', '14': '极大'
+            };
+            const spacingMap = {
+                '0.6': '极紧凑', '0.7': '很紧凑', '0.8': '紧凑', '0.9': '较紧凑',
+                '1': '默认', '1.1': '较宽松', '1.2': '宽松', '1.3': '很宽松', '1.4': '极宽松'
+            };
+            const marginMap = {
+                '0.5': '极窄', '0.6': '很窄', '0.7': '窄', '0.8': '较窄',
+                '0.9': '默认', '1': '标准', '1.1': '较宽', '1.2': '宽',
+                '1.3': '很宽', '1.5': '极宽', '1.8': '超宽', '2': '最大'
+            };
+            
+            const heightPercent = Math.round(bestConfig.heightRatio * 100);
+            
+            alert(`已自动调整：\n\n字体大小：${fontSizeMap[bestConfig.fontSize] || bestConfig.fontSize}pt\n行间距：${spacingMap[bestConfig.lineSpacing] || bestConfig.lineSpacing}\n上边距：${marginMap[bestConfig.marginTop] || bestConfig.marginTop}cm\n下边距：${marginMap[bestConfig.marginBottom] || bestConfig.marginBottom}cm\n\n预计页面使用率：${heightPercent}%`);
+        }
+
+        async function saveResume() {
+            collectBasicInfo();
+            collectEducationData();
+            collectExperienceData();
+            collectProjectData();
+            collectResearchData();
+            collectAwardData();
+            resumeData.selfEvaluation = document.getElementById('selfEvaluation').value || '';
+            
+            resumeData.fontSize = document.getElementById('fontSize')?.value || '10.5';
+            resumeData.lineSpacing = document.getElementById('lineSpacing')?.value || '1';
+            resumeData.marginTop = document.getElementById('marginTop')?.value || '0.9';
+            resumeData.marginBottom = document.getElementById('marginBottom')?.value || '0.9';
+
+            if (!resumeData.name) {
+                alert('请至少填写姓名');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 保存中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/resumes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(resumeData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resumeData.id = result.id;
+                    localStorage.setItem('currentResume', JSON.stringify(resumeData));
+                    console.log('保存成功，简历ID:', result.id);
+                    loadHistoryList();
+                    alert('简历已保存');
+                } else {
+                    alert('保存失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                alert('保存失败: ' + error.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function promptSaveResume() {
+            const versionName = prompt('请输入版本名称：', resumeData.name + ' - ' + new Date().toLocaleDateString('zh-CN'));
+            if (versionName === null) return;
+            
+            resumeData.versionName = versionName;
+            saveResume();
+        }
+
+        function promptGeneratePDF() {
+            const defaultName = `${resumeData.name || 'resume'}_${new Date().toISOString().slice(0,10)}.pdf`;
+            const pdfFileName = prompt('请输入PDF文件名：', defaultName);
+            if (pdfFileName === null) return;
+            
+            const fileName = pdfFileName.endsWith('.pdf') ? pdfFileName : pdfFileName + '.pdf';
+            generatePDF(fileName);
+        }
+
+        function loadResumeFromStorage() {
+            const saved = localStorage.getItem('currentResume');
+            if (saved) {
+                const data = JSON.parse(saved);
+                resumeData = { ...resumeData, ...data };
+                document.getElementById('resumeName').value = resumeData.name || '';
+                document.getElementById('resumePhone').value = resumeData.phone || '';
+                document.getElementById('resumeEmail').value = resumeData.email || '';
+                document.getElementById('resumeLocation').value = resumeData.location || '';
+                document.getElementById('resumeGender').value = resumeData.gender || '';
+
+                if (resumeData.avatar) {
+                    const avatarImg = document.getElementById('avatarImg');
+                    const avatarIcon = document.getElementById('avatarIcon');
+                    avatarImg.src = resumeData.avatar;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                }
+
+                resumeData.education.forEach(edu => {
+                    addEducation();
+                    const lastEdu = document.querySelector('#educationList > div:last-child');
+                    if (lastEdu) {
+                        lastEdu.querySelector('.edu-school').value = edu.school || '';
+                        lastEdu.querySelector('.edu-major').value = edu.major || '';
+                        lastEdu.querySelector('.edu-degree').value = edu.degree || '';
+                        lastEdu.querySelector('.edu-time').value = edu.time || '';
+                        lastEdu.querySelector('.edu-courses').value = edu.courses || '';
+                        lastEdu.querySelector('.edu-skills').value = edu.skills || '';
+                    }
+                });
+
+                resumeData.experience.forEach(exp => {
+                    addExperience();
+                    const lastExp = document.querySelector('#experienceList > div:last-child');
+                    if (lastExp) {
+                        lastExp.querySelector('.exp-company').value = exp.company || '';
+                        lastExp.querySelector('.exp-position').value = exp.position || '';
+                        lastExp.querySelector('.exp-time').value = exp.time || '';
+                        exp.items.forEach(item => {
+                            const expId = lastExp.id.replace('exp-', '');
+                            addExpItem(expId);
+                            const lastItem = lastExp.querySelector('.exp-items > div:last-child .exp-item-content');
+                            if (lastItem) lastItem.value = item;
+                        });
+                    }
+                });
+
+                if (resumeData.projects) {
+                    resumeData.projects.forEach(proj => {
+                        addProject();
+                        const lastProj = document.querySelector('#projectList > div:last-child');
+                        if (lastProj) {
+                            lastProj.querySelector('.proj-name').value = proj.name || '';
+                            lastProj.querySelector('.proj-time').value = proj.time || '';
+                            proj.items.forEach(item => {
+                                const projId = lastProj.id.replace('proj-', '');
+                                addProjItem(projId);
+                                const lastItem = lastProj.querySelector('.proj-items > div:last-child .proj-item-content');
+                                if (lastItem) lastItem.value = item;
+                            });
+                        }
+                    });
+                }
+
+                if (resumeData.research) {
+                    resumeData.research.forEach(res => {
+                        addResearch();
+                        const lastRes = document.querySelector('#researchList > div:last-child');
+                        if (lastRes) {
+                            lastRes.querySelector('.res-name').value = res.name || '';
+                            lastRes.querySelector('.res-time').value = res.time || '';
+                            res.items.forEach(item => {
+                                const resId = lastRes.id.replace('res-', '');
+                                addResItem(resId);
+                                const lastItem = lastRes.querySelector('.res-items > div:last-child .res-item-content');
+                                if (lastItem) lastItem.value = item;
+                            });
+                        }
+                    });
+                }
+
+                resumeData.awards.forEach(award => {
+                    addAward();
+                    const lastAward = document.querySelector('#awardList > div:last-child');
+                    if (lastAward) {
+                        lastAward.querySelector('.award-name').value = award.name || '';
+                        lastAward.querySelector('.award-time').value = award.time || '';
+                    }
+                });
+
+                document.getElementById('selfEvaluation').value = resumeData.selfEvaluation || '';
+                
+                if (resumeData.fontSize) {
+                    document.getElementById('fontSize').value = resumeData.fontSize;
+                }
+                if (resumeData.lineSpacing) {
+                    document.getElementById('lineSpacing').value = resumeData.lineSpacing;
+                }
+                if (resumeData.marginTop) {
+                    document.getElementById('marginTop').value = resumeData.marginTop;
+                }
+                if (resumeData.marginBottom) {
+                    document.getElementById('marginBottom').value = resumeData.marginBottom;
+                }
+            }
+        }
+
+        function createNewResume() {
+            if (resumeData.name && !confirm('当前简历未保存，是否放弃并创建新简历？')) {
+                return;
+            }
+            resumeData = {
+                id: null, name: '', phone: '', email: '', location: '', gender: '',
+                avatar: null, education: [], experience: [], projects: [], research: [], awards: [], selfEvaluation: '',
+                createdAt: null, updatedAt: null
+            };
+            document.getElementById('resumeName').value = '';
+            document.getElementById('resumePhone').value = '';
+            document.getElementById('resumeEmail').value = '';
+            document.getElementById('resumeLocation').value = '';
+            document.getElementById('resumeGender').value = '';
+            document.getElementById('selfEvaluation').value = '';
+            document.getElementById('educationList').innerHTML = '';
+            document.getElementById('experienceList').innerHTML = '';
+            document.getElementById('projectList').innerHTML = '';
+            document.getElementById('researchList').innerHTML = '';
+            document.getElementById('awardList').innerHTML = '';
+            const avatarImg = document.getElementById('avatarImg');
+            const avatarIcon = document.getElementById('avatarIcon');
+            avatarImg.classList.add('hidden');
+            avatarIcon.classList.remove('hidden');
+            educationCounter = 0;
+            experienceCounter = 0;
+            projectCounter = 0;
+            researchCounter = 0;
+            awardCounter = 0;
+            updateLatexPreview();
+        }
+
+        function showHistoryPanel() {
+            document.getElementById('historyPanel').classList.remove('hidden');
+            loadHistoryList();
+        }
+
+        function hideHistoryPanel() {
+            document.getElementById('historyPanel').classList.add('hidden');
+        }
+
+        async function loadHistoryList() {
+            try {
+                const response = await fetch('http://localhost:3000/api/resumes');
+                const result = await response.json();
+                
+                const container = document.getElementById('historyList');
+                if (!result.resumes || result.resumes.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">暂无历史简历</p>';
+                    return;
+                }
+                
+                container.innerHTML = result.resumes.map(r => `
+                    <div class="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition cursor-pointer" onclick="loadResume('${r.id}')">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-medium text-gray-800 truncate">${escapeLatex(r.versionName || r.name) || '未命名'}</h4>
+                                <p class="text-xs text-gray-500 mt-1">${r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('zh-CN') : ''}</p>
+                            </div>
+                            <button onclick="event.stopPropagation();deleteResume('${r.id}')" class="text-gray-400 hover:text-red-500 ml-2">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载历史简历失败:', error);
+                const container = document.getElementById('historyList');
+                container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">加载失败</p>';
+            }
+        }
+
+        async function loadResume(id) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/resumes/${id}`);
+                const result = await response.json();
+                
+                if (result.success && result.resume) {
+                    resumeData = result.resume;
+                    localStorage.setItem('currentResume', JSON.stringify(resumeData));
+                    localStorage.setItem('loadResumeOnStart', 'true');
+                    switchView('resume');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 100);
+                } else {
+                    alert('加载简历失败');
+                }
+            } catch (error) {
+                console.error('加载简历失败:', error);
+                alert('加载简历失败: ' + error.message);
+            }
+        }
+
+        async function deleteResume(id) {
+            if (!confirm('确定要删除这份简历吗？')) return;
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/resumes/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    loadHistoryList();
+                } else {
+                    alert('删除失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('删除简历失败:', error);
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        function showModuleConfig() {
+            const modal = document.getElementById('moduleConfigModal');
+            const container = document.getElementById('moduleList');
+            container.innerHTML = resumeModules.map((module, index) => `
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg ${module.required ? 'opacity-50' : ''}">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid ${module.icon} text-brand"></i>
+                        <span class="font-medium text-gray-800">${module.name}</span>
+                        ${module.required ? '<span class="text-xs text-gray-400">(必选)</span>' : ''}
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" ${module.enabled ? 'checked' : ''} ${module.required ? 'disabled' : ''} onchange="toggleModule('${module.id}')">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+                    </label>
+                </div>
+            `).join('');
+            modal.classList.remove('hidden');
+        }
+
+        function hideModuleConfig() {
+            document.getElementById('moduleConfigModal').classList.add('hidden');
+        }
+
+        function toggleModule(moduleId) {
+            const module = resumeModules.find(m => m.id === moduleId);
+            if (module && !module.required) {
+                module.enabled = !module.enabled;
+            }
+        }
+
+        function saveModuleConfig() {
+            localStorage.setItem('resumeModules', JSON.stringify(resumeModules));
+            applyModuleConfig();
+            hideModuleConfig();
+            alert('模块配置已保存');
+        }
+
+        function loadModuleConfig() {
+            const saved = localStorage.getItem('resumeModules');
+            if (saved) {
+                const savedModules = JSON.parse(saved);
+                savedModules.forEach(savedModule => {
+                    const module = resumeModules.find(m => m.id === savedModule.id);
+                    if (module && !module.required) {
+                        module.enabled = savedModule.enabled;
+                    }
+                });
+            }
+            applyModuleConfig();
+        }
+
+        function applyModuleConfig() {
+            resumeModules.forEach(module => {
+                const panel = document.getElementById(`${module.id}Panel`);
+                if (panel) {
+                    if (module.enabled) {
+                        panel.classList.remove('hidden');
+                    } else {
+                        panel.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        async function generatePDF(pdfFileName = null) {
+            collectBasicInfo();
+            collectEducationData();
+            collectExperienceData();
+            collectAwardData();
+
+            if (!resumeData.name) {
+                alert('请至少填写姓名');
+                return;
+            }
+
+            const latex = generateLatex();
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 生成中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/generate-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        latexContent: latex,
+                        avatarData: resumeData.avatar
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.details || error.error || 'PDF生成失败');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = pdfFileName || `resume_${resumeData.name}_${new Date().toISOString().slice(0,10)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('PDF生成错误:', error);
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    alert('无法连接到服务器，请确保后端服务已启动。\n\n启动方法：\n1. 打开终端进入 server 目录\n2. 运行 npm install\n3. 运行 npm start\n\n将为您下载 .tex 文件，您可以使用 Overleaf 编译。');
+                    downloadTexFile(latex);
+                } else if (error.message.includes('未找到pdflatex')) {
+                    alert('服务器未安装LaTeX环境。\n\n请安装 MiKTeX (Windows) 或 TeX Live 后重试。\n\n将为您下载 .tex 文件，您可以使用 Overleaf 编译。');
+                    downloadTexFile(latex);
+                } else {
+                    alert('PDF生成失败: ' + error.message + '\n\n将为您下载 .tex 文件。');
+                    downloadTexFile(latex);
+                }
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function downloadTexFile(latex) {
+            const blob = new Blob([latex], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `resume_${resumeData.name}_${new Date().toISOString().slice(0,10)}.tex`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 体育新闻功能 ---
+        let currentNewsCategory = 'all';
+        let newsCache = {};
+        const NEWS_CACHE_DURATION = 5 * 60 * 1000;
+
+        const categoryConfig = {
+            all: { name: '全部', color: 'from-gray-500 to-gray-600', icon: '📰' },
+            nba: { name: 'NBA', color: 'from-red-500 to-orange-500', icon: '🏀' },
+            cba: { name: 'CBA', color: 'from-blue-500 to-indigo-500', icon: '🏀' },
+            epl: { name: '英超', color: 'from-purple-500 to-pink-500', icon: '⚽' },
+            csl: { name: '中超', color: 'from-yellow-500 to-red-500', icon: '⚽' },
+            worldcup: { name: '世界杯', color: 'from-green-500 to-teal-500', icon: '🏆' },
+            tennis: { name: '网球', color: 'from-lime-500 to-green-500', icon: '🎾' }
+        };
+
+        function switchNewsCategory(category) {
+            currentNewsCategory = category;
+            document.querySelectorAll('.news-tab').forEach(tab => {
+                if (tab.dataset.category === category) {
+                    tab.className = 'news-tab px-4 py-2 rounded-full text-sm font-medium bg-brand text-white';
+                } else {
+                    tab.className = 'news-tab px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
+                }
+            });
+            loadNews(category);
+            loadLiveScores(category);
+            loadStandings(category);
+        }
+
+        async function loadLiveScores(category) {
+            const section = document.getElementById('liveScoresSection');
+            const container = document.getElementById('liveScoresContainer');
+            
+            section.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/live-scores?category=${category}`);
+                if (!response.ok) throw new Error('获取比分失败');
+                const data = await response.json();
+                
+                if (data.matches && data.matches.length > 0) {
+                    container.innerHTML = data.matches.map(match => `
+                        <div class="glass-panel rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-500">${match.status || ''}</span>
+                                ${match.isLive ? '<span class="text-xs px-2 py-0.5 bg-red-500 text-white rounded animate-pulse">直播中</span>' : ''}
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-center flex-1">
+                                    <div class="text-sm font-medium text-gray-800">${match.homeTeam}</div>
+                                    ${match.homeLogo ? `<img src="${match.homeLogo}" class="w-8 h-8 mx-auto mt-1" onerror="this.style.display='none'">` : ''}
+                                </div>
+                                <div class="text-center px-4">
+                                    <div class="text-2xl font-bold text-gray-800">${match.homeScore} - ${match.awayScore}</div>
+                                    <div class="text-xs text-gray-400">${match.time || ''}</div>
+                                </div>
+                                <div class="text-center flex-1">
+                                    <div class="text-sm font-medium text-gray-800">${match.awayTeam}</div>
+                                    ${match.awayLogo ? `<img src="${match.awayLogo}" class="w-8 h-8 mx-auto mt-1" onerror="this.style.display='none'">` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    section.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error('加载比分失败:', err);
+                container.innerHTML = `<div class="col-span-full text-center py-4 text-gray-500">暂无比分数据</div>`;
+            }
+        }
+
+        async function loadStandings(category) {
+            const section = document.getElementById('standingsSection');
+            const container = document.getElementById('standingsContainer');
+            
+            section.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/standings?category=${category}`);
+                if (!response.ok) throw new Error('获取积分榜失败');
+                const data = await response.json();
+                
+                if (data.standings && data.standings.length > 0) {
+                    container.innerHTML = `
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-gray-500 border-b">
+                                    <th class="text-left py-2 px-2">#</th>
+                                    <th class="text-left py-2 px-2">球队</th>
+                                    <th class="text-center py-2 px-2">胜</th>
+                                    <th class="text-center py-2 px-2">平</th>
+                                    <th class="text-center py-2 px-2">负</th>
+                                    <th class="text-center py-2 px-2">积分</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.standings.slice(0, 10).map((team, idx) => `
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                        <td class="py-2 px-2 font-medium ${idx < 4 ? 'text-brand' : ''}">${idx + 1}</td>
+                                        <td class="py-2 px-2 font-medium">${team.name}</td>
+                                        <td class="text-center py-2 px-2">${team.won}</td>
+                                        <td class="text-center py-2 px-2">${team.draw}</td>
+                                        <td class="text-center py-2 px-2">${team.lost}</td>
+                                        <td class="text-center py-2 px-2 font-bold">${team.points}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    container.innerHTML = `<div class="text-center py-4 text-gray-500">暂无积分榜数据</div>`;
+                }
+            } catch (err) {
+                console.error('加载积分榜失败:', err);
+                section.classList.add('hidden');
+            }
+        }
+
+        async function loadNews(category) {
+            const container = document.getElementById('newsContainer');
+            const loading = document.getElementById('newsLoading');
+            const error = document.getElementById('newsError');
+
+            loading.classList.remove('hidden');
+            container.innerHTML = '';
+            error.classList.add('hidden');
+
+            const cacheKey = category;
+            const now = Date.now();
+            if (newsCache[cacheKey] && (now - newsCache[cacheKey].timestamp) < NEWS_CACHE_DURATION) {
+                renderNews(newsCache[cacheKey].data);
+                loading.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/news?category=${category}`);
+                if (!response.ok) throw new Error('获取新闻失败');
+                const data = await response.json();
+                
+                newsCache[cacheKey] = {
+                    data: data.articles || [],
+                    timestamp: now
+                };
+                
+                renderNews(data.articles || []);
+            } catch (err) {
+                console.error('加载新闻失败:', err);
+                error.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderNews(articles) {
+            const container = document.getElementById('newsContainer');
+            
+            if (!articles || articles.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fa-solid fa-newspaper text-4xl text-gray-300"></i>
+                        <p class="text-gray-500 mt-4">暂无新闻数据</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = articles.map(article => {
+                const config = categoryConfig[article.category] || categoryConfig.all;
+                const timeAgo = formatTimeAgo(article.publishedAt);
+                
+                return `
+                    <div class="glass-panel rounded-xl overflow-hidden group cursor-pointer hover:shadow-lg transition" onclick="openNewsDetail(${JSON.stringify(article).replace(/"/g, '&quot;')})">
+                        <div class="h-36 bg-gradient-to-r ${config.color} flex items-center justify-center text-white text-3xl font-bold opacity-80 group-hover:opacity-100 transition relative overflow-hidden">
+                            ${article.image ? `<img src="${article.image}" class="absolute inset-0 w-full h-full object-cover opacity-60" onerror="this.style.display='none'">` : ''}
+                            <span class="relative z-10">${config.icon} ${config.name}</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs px-2 py-0.5 bg-brand/10 text-brand font-bold rounded">${article.source || config.name}</span>
+                                ${article.isHot ? '<span class="text-xs px-2 py-0.5 bg-red-100 text-red-600 font-bold rounded">热点</span>' : ''}
+                            </div>
+                            <h3 class="text-base font-bold text-gray-800 line-clamp-2">${escapeHtml(article.title)}</h3>
+                            <p class="text-sm text-gray-500 mt-2 line-clamp-2">${escapeHtml(article.description || '')}</p>
+                            <div class="flex justify-between items-center mt-3 text-xs text-gray-400">
+                                <span>${timeAgo}</span>
+                                ${article.views ? `<span><i class="fa-solid fa-eye mr-1"></i>${formatViews(article.views)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openNewsDetail(article) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            
+            const config = categoryConfig[article.category] || categoryConfig.all;
+            const timeAgo = formatTimeAgo(article.publishedAt);
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                    <div class="h-56 bg-gradient-to-r ${config.color} flex items-center justify-center text-white text-5xl font-bold relative flex-shrink-0">
+                        ${article.image ? `<img src="${article.image}" class="absolute inset-0 w-full h-full object-cover opacity-50" onerror="this.style.display='none'">` : ''}
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                        <span class="relative z-10 drop-shadow-lg">${config.icon}</span>
+                        <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition">
+                            <i class="fa-solid fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 overflow-y-auto flex-1">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-sm px-3 py-1 bg-brand/10 text-brand font-bold rounded-full">${article.source || config.name}</span>
+                            <span class="text-sm text-gray-400">${timeAgo}</span>
+                            ${article.views ? `<span class="text-sm text-gray-400"><i class="fa-solid fa-eye mr-1"></i>${formatViews(article.views)}</span>` : ''}
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 leading-tight">${escapeHtml(article.title)}</h2>
+                        
+                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mb-6">
+                            <h3 class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-info-circle"></i>新闻概述
+                            </h3>
+                            <p class="text-gray-700 leading-relaxed">${escapeHtml(article.description || '暂无概述')}</p>
+                        </div>
+                        
+                        <div id="detailContent" class="mb-6">
+                            <div class="flex items-center justify-center py-8">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl text-brand"></i>
+                                <span class="ml-2 text-gray-500">正在加载详细内容...</span>
+                            </div>
+                        </div>
+                        
+                        <div id="translatedContent" class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg mb-6 hidden">
+                            <h3 class="text-sm font-bold text-green-700 mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-language"></i>AI中文翻译
+                            </h3>
+                            <p class="text-gray-700 leading-relaxed text-sm" id="translatedText"></p>
+                        </div>
+                        
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-external-link-alt"></i>原文来源
+                            </h3>
+                            ${article.url ? `
+                                <a href="${article.url}" target="_blank" class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition group">
+                                    <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center">
+                                        <i class="fa-solid fa-newspaper text-brand text-xl"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="font-medium text-gray-800 group-hover:text-brand transition">${article.source || '查看原文'}</div>
+                                        <div class="text-sm text-gray-500 truncate">${article.url}</div>
+                                    </div>
+                                    <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-brand group-hover:translate-x-1 transition"></i>
+                                </a>
+                            ` : '<p class="text-gray-400 text-sm">暂无原文链接</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-200 bg-gray-50 flex gap-3 flex-shrink-0">
+                        ${article.url ? `<a href="${article.url}" target="_blank" class="flex-1 py-3 px-4 bg-brand text-white rounded-xl text-center font-medium hover:bg-brand/90 transition flex items-center justify-center gap-2"><i class="fa-solid fa-external-link-alt"></i>前往原文网站</a>` : ''}
+                        <button onclick="shareNews(${JSON.stringify(article).replace(/"/g, '&quot;')})" class="py-3 px-4 border border-gray-300 rounded-xl text-gray-700 hover:bg-white transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-share-alt"></i>分享
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" class="py-3 px-4 border border-gray-300 rounded-xl text-gray-700 hover:bg-white transition">关闭</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            fetchNewsDetail(article, modal);
+        }
+
+        async function fetchNewsDetail(article, modal) {
+            const detailContent = modal.querySelector('#detailContent');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/news-detail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: article.url, title: article.title, description: article.description })
+                });
+                
+                if (!response.ok) throw new Error('获取详情失败');
+                const data = await response.json();
+                
+                if (data.content) {
+                    detailContent.innerHTML = `
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-file-alt"></i>详细内容
+                            </h3>
+                            <div class="text-gray-700 leading-relaxed whitespace-pre-line">${escapeHtml(data.content)}</div>
+                        </div>
+                    `;
+                } else {
+                    detailContent.innerHTML = `
+                        <div class="bg-gray-50 rounded-xl p-4 text-center text-gray-500">
+                            <i class="fa-solid fa-file-alt text-3xl mb-2"></i>
+                            <p>详细内容请查看原文</p>
+                        </div>
+                    `;
+                }
+                
+                if (data.translatedContent) {
+                    const translatedDiv = modal.querySelector('#translatedContent');
+                    const translatedText = modal.querySelector('#translatedText');
+                    translatedDiv.classList.remove('hidden');
+                    translatedText.textContent = data.translatedContent;
+                }
+            } catch (err) {
+                console.error('获取详情失败:', err);
+                detailContent.innerHTML = `
+                    <div class="bg-gray-50 rounded-xl p-4 text-center text-gray-500">
+                        <i class="fa-solid fa-exclamation-circle text-3xl mb-2"></i>
+                        <p>无法加载详细内容，请查看原文</p>
+                    </div>
+                `;
+            }
+        }
+
+        function shareNews(article) {
+            const text = `${article.title} - ${article.description || ''}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: article.title,
+                    text: text,
+                    url: article.url || window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(article.url || text).then(() => {
+                    alert('链接已复制到剪贴板');
+                });
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatTimeAgo(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+            
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+            if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function formatViews(views) {
+            if (views >= 10000) return (views / 10000).toFixed(1) + 'w';
+            if (views >= 1000) return (views / 1000).toFixed(1) + 'k';
+            return views;
+        }
+
+        function openNews(url) {
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+
+        function refreshNews() {
+            delete newsCache[currentNewsCategory];
+            loadNews(currentNewsCategory);
+        }
+
+        function initNews() {
+            loadNews('all');
+        }
+    </script>
+</body>
+</html>
+

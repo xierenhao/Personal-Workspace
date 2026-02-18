@@ -17,7 +17,7 @@ const parser = new Parser({
 });
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -1230,11 +1230,15 @@ cron.schedule('0 * * * *', async () => {
     await refreshRSSNews();
 });
 
-app.listen(PORT, async () => {
-    console.log(`简历生成服务运行在 http://localhost:${PORT}`);
-    console.log(`模板目录: ${TEMPLATE_DIR}`);
-    console.log(`临时目录: ${TEMP_DIR}`);
-    
-    console.log('正在获取RSS实时新闻...');
-    await refreshRSSNews();
-});
+if (require.main === module) {
+    app.listen(PORT, async () => {
+        console.log(`简历生成服务运行在 http://localhost:${PORT}`);
+        console.log(`模板目录: ${TEMPLATE_DIR}`);
+        console.log(`临时目录: ${TEMP_DIR}`);
+        
+        console.log('正在获取RSS实时新闻...');
+        await refreshRSSNews();
+    });
+}
+
+module.exports = app;
